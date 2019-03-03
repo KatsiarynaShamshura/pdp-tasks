@@ -40,7 +40,7 @@ public class FirstTask {
             .forEach(i -> System.out.print(i + " "));
 
         /**
-         * Task with *: choose from uuid parts that consist only of numbers.
+         * Task with "*": choose from uuid parts that consist only of numbers.
          */
         Stream.generate(UUID::randomUUID)
             .limit(50)
