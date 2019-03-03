@@ -12,6 +12,7 @@ import java.util.UUID;
 public class FirstTask {
 
     public static void main(String[] args) {
+
         Map<String, DayOfWeek> map = new HashMap<>();
 
         for (int i = 0; i < 60; i++) {
