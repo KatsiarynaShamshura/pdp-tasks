@@ -35,7 +35,7 @@ public class CustomClassLoader extends ClassLoader implements Runnable {
                     Class<?> aClass = null;
                     if (!loadedFiles.contains(file)) {
                         System.out.println("Start loading class");
-                        aClass = this.findClass(file);
+                        aClass = findClass(file);
                         loadedFiles.add(file);
                     }
                     consumer.accept(aClass);
