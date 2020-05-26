@@ -11,14 +11,14 @@ public class Application {
         System.out.println("runned");
     }
 
-    private static void invokeMethod(Class<?> cla$$) {
-        if (cla$$ == null) {
+    private static void invokeMethod(Class<?> newClass) {
+        if (newClass == null) {
             return;
         }
         try {
             System.out.println("Invoke method");
-            Object instance = cla$$.getConstructor().newInstance();
-            Method[] methods = cla$$.getMethods();
+            Object instance = newClass.getConstructor().newInstance();
+            Method[] methods = newClass.getMethods();
             System.out.println("------");
             methods[0].invoke(instance);
             System.out.println("------");
