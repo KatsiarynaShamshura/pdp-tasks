@@ -6,8 +6,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -20,8 +21,8 @@ public class CustomClassLoader extends ClassLoader implements Runnable {
     private final Consumer<Class<?>> consumer;
     private final List<File> loadedFiles = new ArrayList<>();
 
-    public CustomClassLoader(String filepath, Consumer<Class<?>> consumer) {
-        this.rootFile = new File(filepath);
+    public CustomClassLoader(String filePath, Consumer<Class<?>> consumer) {
+        this.rootFile = new File(filePath);
         this.consumer = consumer;
     }
 
@@ -35,7 +36,7 @@ public class CustomClassLoader extends ClassLoader implements Runnable {
                     Class<?> aClass = null;
                     if (!loadedFiles.contains(file)) {
                         System.out.println("Start loading class");
-                        aClass = findClass(file);
+                        aClass = this.findClass(file);
                         loadedFiles.add(file);
                     }
                     consumer.accept(aClass);
@@ -51,51 +52,59 @@ public class CustomClassLoader extends ClassLoader implements Runnable {
     }
 
     public Class<?> findClass(File jarFile) {
-        return filterClasses(loadClassesFromJar(jarFile));
+        return loadClassesFromJar(jarFile);
     }
 
-    private List<Class<?>> loadClassesFromJar(File file) {
+    private Class<?> loadClassesFromJar(File file) {
         try (JarFile jarFile = new JarFile(file)) {
-            Enumeration<JarEntry> entries = jarFile.entries();
-            List<Class<?>> classes = new ArrayList<>();
-            while (entries.hasMoreElements()) {
-                JarEntry entry = entries.nextElement();
-                if (entry.getName().endsWith(CLASS_EXTENSION)) {
-                    InputStream is = jarFile.getInputStream(entry);
-                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                    int readByte;
-                    while ((readByte = is.read()) != -1) {
-                        byteArrayOutputStream.write(readByte);
-                    }
-                    byte[] bytes = byteArrayOutputStream.toByteArray();
-                    String className = replaceName(entry.getName());
-                    if (findLoadedClass(className) == null) {
-                        Class<?> newClass = defineClass(className, bytes, 0, bytes.length);
-                        System.out.println("Class with name: " + className + " loaded");
-                        classes.add(newClass);
-                    } else {
-                        System.out.println("Class with name: " + className + " already loaded");
-                    }
-                }
-            }
-            return classes;
+            Optional<? extends Class<?>> clazz = Collections.list(jarFile.entries()).stream()
+                .filter(entry -> entry.getName().endsWith(CLASS_EXTENSION))
+                .map(entry -> proceedEntry(jarFile, entry))
+                .filter(Objects::nonNull)
+                .filter(this::filterClasses)
+                .findFirst();
+            return clazz.orElse(null);
         } catch (IOException e) {
-            System.out.println("Something wrong!");
             e.printStackTrace();
         }
-        return Collections.emptyList();
+        return null;
     }
 
-    private Class<?> filterClasses(List<Class<?>> classes) {
-        for (Class<?> clazz : classes) {
-            Class<?>[] interfaces = clazz.getInterfaces();
-            for (Class<?> interf : interfaces) {
-                if (ICommon.class.getName().equals(interf.getName())) {
-                    return clazz;
-                }
-            }
+    private Class<?> proceedEntry(JarFile jarFile, JarEntry entry) {
+        byte[] bytes = getBytes(jarFile, entry);
+        String className = replaceName(entry.getName());
+        if (findLoadedClass(className) == null) {
+            Class<?> newClass = defineClass(className, bytes, 0, bytes.length);
+            System.out.println("class with name: " + className + " loaded");
+            return newClass;
+        } else {
+            System.out.println("class with name: " + className + " already loaded");
         }
         return null;
+    }
+
+    private boolean filterClasses(Class<?> clazz) {
+        Class<?>[] interfaces = clazz.getInterfaces();
+        for (Class<?> interf : interfaces) {
+            if (ICommon.class.getName().equals(interf.getName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private byte[] getBytes(JarFile jarFile, JarEntry entry) {
+        try (InputStream is = jarFile.getInputStream(entry)) {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            int readByte;
+            while ((readByte = is.read()) != -1) {
+                byteArrayOutputStream.write(readByte);
+            }
+            return byteArrayOutputStream.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return new byte[0];
     }
 
     private String replaceName(String name) {
