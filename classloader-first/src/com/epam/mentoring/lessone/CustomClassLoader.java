@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -31,22 +32,19 @@ public class CustomClassLoader extends ClassLoader implements Runnable {
         while (true) {
             System.out.println("Try to find new jar file");
             File[] matchingFiles = rootFile.listFiles((dir, name) -> name.endsWith("jar"));
-            if (matchingFiles != null) {
-                for (File file : matchingFiles) {
-                    Class<?> aClass = null;
-                    if (!loadedFiles.contains(file)) {
-                        System.out.println("Start loading class");
-                        aClass = this.findClass(file);
-                        loadedFiles.add(file);
-                    }
+            Arrays.stream(matchingFiles)
+                .filter(Objects::nonNull)
+                .filter(file -> !loadedFiles.contains(file))
+                .forEach(file -> {
+                    System.out.println("Start loading class");
+                    Class<?> aClass = findClass(file);
+                    loadedFiles.add(file);
                     consumer.accept(aClass);
-                }
-                try {
-                    Thread.sleep(5000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-
+                });
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }
